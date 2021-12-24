@@ -2,7 +2,11 @@
 
 import networkx as nx
 from kivy.app import App
+from kivy.clock import Clock
 from random import random
+import time
+from functools import partial
+
 
 
 # UIX
@@ -24,11 +28,17 @@ class Edge(Widget):
 	def __init__(self,**kwargs):
 		super(Edge,self).__init__(**kwargs)
 		self.nodes = []
+		self.selected = False
 	def draw_edge(self,node_a,node_b):
 		print("I should draw edge from" + str(node_a.pos) + " to " + str(node_b.pos))
-		with self.canvas:
-			Color(0,0,0)
-			Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
+		if not self.selected:
+			with self.canvas:
+				Color(0,0,0)
+				Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
+		else:
+			with self.canvas:
+				Color(1,0,0)
+				Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
 		
 		
 class Node(Widget):
@@ -47,7 +57,7 @@ class Node(Widget):
 		
 
 
-	def draw_node(self,pos):
+	def draw_node(self,pos,dt = None):
 		radius = 25
 		if self.selected:
 			with self.canvas:
@@ -159,7 +169,7 @@ class MainApp(App):
 		# Dropdown button
 		self.dropdown = DropDown()
 		self.dropdown.add_widget(Button(text = "DFS",size_hint_y=None, height=20,on_release = self.dfs))
-		self.dropdown.add_widget(Button(text = "BFS",size_hint_y=None, height=20,on_release = self.dropdown.dismiss))
+		self.dropdown.add_widget(Button(text = "BFS",size_hint_y=None, height=20,on_release = self.bfs))
 		self.dropdown.add_widget(Button(text = "Soon...",size_hint_y=None, height=20,on_release = self.dropdown.dismiss))
 		
 		Layout = BoxLayout(orientation = 'vertical')
@@ -195,8 +205,26 @@ class MainApp(App):
 
 	def dfs(self,value):
 		self.dropdown.dismiss()
-		print(list(nx.dfs_edges(self.editor.G)))
-	
+		node_order = list(nx.dfs_edges(self.editor.G))
+		for count,edge in enumerate(node_order): # edge = (Node_1, Node_2)
+			node_a = self.return_node(edge[0])
+			node_b = self.return_node(edge[1])
+			node_a.selected = True
+			node_b.selected = True
+			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count)
+			
+		
+			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
+			
+			
+
+	def return_node(self,label):
+		for n in self.editor.nodes:
+			if n.label == label:
+				return n	
+	def bfs(self,value):
+		print("Soon...")
+
 
 if __name__ == '__main__':
 	MainApp().run()

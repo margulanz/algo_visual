@@ -24,17 +24,24 @@ from kivy.properties import ListProperty
 
 #G = nx.Graph()
 
+def enumerate2(xs, start=0, step=1):
+    for x in xs:
+        yield (start, x)
+        start += step
+
+
 class Edge(Widget):
 	def __init__(self,**kwargs):
 		super(Edge,self).__init__(**kwargs)
 		self.nodes = []
 		self.selected = False
-	def draw_edge(self,node_a,node_b):
-		print("I should draw edge from" + str(node_a.pos) + " to " + str(node_b.pos))
+		self.weight = 1
+	def draw_edge(self,node_a,node_b,dt = None):
 		if not self.selected:
 			with self.canvas:
 				Color(0,0,0)
 				Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
+				Label(font_size = '20sp',size_hint = (1,1),text = str(self.weight),pos = ((node_a.pos[0]+node_b.pos[0]-50)/2,(node_a.pos[1]+node_b.pos[1]-50)/2+10),color = (0,1,1,1))
 		else:
 			with self.canvas:
 				Color(1,0,0)
@@ -108,24 +115,24 @@ class GraphEditor(FloatLayout):
 					selected_nodes.append(node)
 					selected_num+=1
 				if selected_num == 2:
-					
-					self.G.add_edge(selected_nodes[0].label,selected_nodes[1].label)
+					new_edge = Edge()
+					new_edge.weight = input("Weight: ")
+					self.G.add_edge(selected_nodes[0].label,selected_nodes[1].label,weight = int(new_edge.weight))
 					self.activate_vertex_addition(None)
 					self.activate_edge_addition(None)
 					
-					new_edge = Edge()
+					
 					self.add_widget(new_edge)
 					new_edge.nodes += [selected_nodes[0],selected_nodes[1]]
+
+
 					new_edge.draw_edge(selected_nodes[0],selected_nodes[1])
 					self.edges.append(new_edge)
 
 
 					self.remove_widget(self.nodes_layout)
 					self.add_widget(self.nodes_layout)
-					'''
-					selected_nodes[0].draw_node(selected_nodes[0].pos)
-					selected_nodes[1].draw_node(selected_nodes[1].pos)
-					'''
+					
 					break
 					
 				
@@ -133,7 +140,6 @@ class GraphEditor(FloatLayout):
 
 			
 	def clear_canvas(self, obj):
-		print(list(self.G.nodes))
 		for node in self.nodes:
 			self.nodes_layout.remove_widget(node)
 		self.nodes_layout.canvas.clear()
@@ -148,6 +154,9 @@ class GraphEditor(FloatLayout):
 		for node in self.nodes:
 			node.selected = False
 			node.draw_node(node.pos)
+		for edge in self.edges:
+			edge.selected = False
+			edge.draw_edge(edge.nodes[0],edge.nodes[1])
 		self.add_vertex = True
 		self.add_edge = False
 		
@@ -170,7 +179,7 @@ class MainApp(App):
 		self.dropdown = DropDown()
 		self.dropdown.add_widget(Button(text = "DFS",size_hint_y=None, height=20,on_release = self.dfs))
 		self.dropdown.add_widget(Button(text = "BFS",size_hint_y=None, height=20,on_release = self.bfs))
-		self.dropdown.add_widget(Button(text = "Soon...",size_hint_y=None, height=20,on_release = self.dropdown.dismiss))
+		self.dropdown.add_widget(Button(text = "Dijkstra's algorithm (shortest Path)",size_hint_y=None, height=20,on_release = self.shortest_path))
 		
 		Layout = BoxLayout(orientation = 'vertical')
 
@@ -205,26 +214,71 @@ class MainApp(App):
 
 	def dfs(self,value):
 		self.dropdown.dismiss()
-		node_order = list(nx.dfs_edges(self.editor.G))
-		for count,edge in enumerate(node_order): # edge = (Node_1, Node_2)
+		start = time.time()
+		source = input("Source: ")
+		end = time.time()
+		duration = int(end - start)
+		node_order = list(nx.dfs_edges(self.editor.G,source = source))
+		self.editor.activate_vertex_addition(None)
+		self.editor.activate_edge_addition(None)
+		for count,edge in enumerate2(node_order,duration,0.5):
 			node_a = self.return_node(edge[0])
 			node_b = self.return_node(edge[1])
+			edge = self.return_edge(edge[0],edge[1])
 			node_a.selected = True
 			node_b.selected = True
-			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count)
-			
-		
+			edge.selected = True
+			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count+.5)
+			Clock.schedule_once(partial(edge.draw_edge,node_a,node_b),count+1)
 			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
+		
 			
-			
+	def bfs(self,value):
+		self.dropdown.dismiss()
+		start = time.time()
+		source = input("Source: ")
+		end = time.time()
+		duration = int(end - start)
+		node_order = list(nx.bfs_edges(self.editor.G,source = source))
+		self.editor.activate_vertex_addition(None)
+		self.editor.activate_edge_addition(None)
+		for count,edge in enumerate2(node_order,duration,.5): # edge = (Node_1, Node_2)
+			node_a = self.return_node(edge[0])
+			node_b = self.return_node(edge[1])
+			edge = self.return_edge(edge[0],edge[1])
+			node_a.selected = True
+			node_b.selected = True
+			edge.selected = True
+			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count+.5)
+			Clock.schedule_once(partial(edge.draw_edge,node_a,node_b),count+1)
+			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
+
+	def shortest_path(self,value):
+		self.dropdown.dismiss()
+		source = input("Source: ")
+		target = input("Target: ")
+		node_order = list(nx.shortest_path(self.editor.G,source = source,target = target,weight = 'weight',method='dijkstra'))
+		self.editor.activate_vertex_addition(None)
+		self.editor.activate_edge_addition(None)
+		for count,edge in enumerate2(node_order,0,.5): # edge = (Node_1, Node_2)
+			node_a = self.return_node(edge[0])
+			node_a.selected = True
+
+			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count)
+
+
+		
 
 	def return_node(self,label):
 		for n in self.editor.nodes:
 			if n.label == label:
 				return n	
-	def bfs(self,value):
-		print("Soon...")
-
+	
+	def return_edge(self,node_a,node_b):
+		node = (self.return_node(node_a),self.return_node(node_b))
+		for edge in self.editor.edges:
+			if node[0] in edge.nodes and node[1] in edge.nodes:
+				return edge
 
 if __name__ == '__main__':
 	MainApp().run()

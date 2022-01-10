@@ -20,9 +20,9 @@ from kivy.uix.dropdown import DropDown
 from kivy.graphics import Color, Ellipse, Line,Rectangle
 from kivy.properties import StringProperty
 from kivy.properties import ListProperty
+from kivy.uix.popup import Popup
+from kivy.uix.textinput import TextInput
 
-
-#G = nx.Graph()
 
 def enumerate2(xs, start=0, step=1):
     for x in xs:
@@ -30,6 +30,7 @@ def enumerate2(xs, start=0, step=1):
         start += step
 
 
+# Edge Widget Implementation
 class Edge(Widget):
 	def __init__(self,**kwargs):
 		super(Edge,self).__init__(**kwargs)
@@ -41,13 +42,13 @@ class Edge(Widget):
 			with self.canvas:
 				Color(0,0,0)
 				Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
-				Label(font_size = '20sp',size_hint = (1,1),text = str(self.weight),pos = ((node_a.pos[0]+node_b.pos[0]-50)/2,(node_a.pos[1]+node_b.pos[1]-50)/2+10),color = (0,1,1,1))
+				Label(font_size = '20sp',size_hint = (1,1),text = str(self.weight),pos = ((node_a.pos[0]+node_b.pos[0]-100)/2,(node_a.pos[1]+node_b.pos[1]-50)/2),color = (0,1,1,1))
 		else:
 			with self.canvas:
 				Color(1,0,0)
 				Line(points = [node_a.pos[0],node_a.pos[1],node_b.pos[0],node_b.pos[1]],width=2)
 		
-		
+# Node Widget Implementation	
 class Node(Widget):
 	label = StringProperty("")
 	def __init__(self,**kwargs):
@@ -55,29 +56,23 @@ class Node(Widget):
 		self.selected = False
 	def on_touch_down(self,touch):
 		if (self.pos[0]-25<=touch.pos[0]<=self.pos[0]+self.size[0]-25 and self.pos[1]-25<=touch.pos[1]<=self.pos[1]+self.size[1]-25):
-			
 			self.selected = not self.selected
 			self.canvas.clear()
 			self.draw_node(self.pos)
-
 			return True
-		
-
-
 	def draw_node(self,pos,dt = None):
 		radius = 25
 		if self.selected:
-			with self.canvas:
-				color= (249/255,19/255,38/255)
-				Color(*color)
-				Ellipse(pos = (pos[0]-radius,pos[1]-radius),size = (radius*2,radius*2))
+			color = (249/255,19/255,38/255)
 		else:
-			with self.canvas:
-				color= (146/255,170/255,217/255)
-				Color(*color)
-				Ellipse(pos = (pos[0]-radius,pos[1]-radius),size = (radius*2,radius*2))
+			color = (146/255,170/255,217/255)
+		with self.canvas:
+			Color(*color)
+			Ellipse(pos = (pos[0]-radius,pos[1]-radius),size = (radius*2,radius*2))
 		self.add_widget(Label(font_size = '35sp',size_hint = (1,1),text = self.label,pos = (pos[0]-2*radius,pos[1]-2*radius),color = (0,0,0,1)))
 
+
+# Graph Editor Layout Implementation
 class GraphEditor(FloatLayout):
 	def __init__(self,**kwargs):
 		super(GraphEditor,self).__init__(**kwargs)
@@ -87,13 +82,17 @@ class GraphEditor(FloatLayout):
 		self.add_vertex = False
 		self.add_edge = False
 		self.G = nx.Graph()
-		# I do it only for line being behind the nodes
+		# Should draw background 
+		#self.canvas.add(Color(255,255,255))
+		#self.canvas.add(Rectangle(size = (700,525)))
+		# Should be done in order to place lines behind nodes
 		self.nodes_layout = NodesLayout()
 		self.add_widget(self.nodes_layout)
 
 	def on_touch_down(self,touch):
 		alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 		radius = 25
+		# Adding new nodes
 		if touch.spos[1] <=.78 and self.add_vertex == True:
 
 			if len(self.nodes) >= self.max_num_of_nodes:
@@ -105,51 +104,59 @@ class GraphEditor(FloatLayout):
 			self.G.add_node(new_node.label)
 			new_node.draw_node(touch.pos)	
 
+		# Adding new edges
 		if touch.spos[1] <=.78 and self.add_edge == True:
 			# If we are adding edge, we should continue finding children widget
 			super(GraphEditor, self).on_touch_down(touch)	
 			selected_num = 0
-			selected_nodes = []
+			self.selected_nodes = []
 			for node in self.nodes:
 				if node.selected == True:
-					selected_nodes.append(node)
+					self.selected_nodes.append(node)
 					selected_num+=1
 				if selected_num == 2:
-					new_edge = Edge()
-					new_edge.weight = input("Weight: ")
-					self.G.add_edge(selected_nodes[0].label,selected_nodes[1].label,weight = int(new_edge.weight))
-					self.activate_vertex_addition(None)
-					self.activate_edge_addition(None)
-					
-					
-					self.add_widget(new_edge)
-					new_edge.nodes += [selected_nodes[0],selected_nodes[1]]
+					for edge in self.G.edges():
+						if (self.selected_nodes[0].label in edge) and (self.selected_nodes[1].label in edge):
+							print("Already present")
+							return
+					self.new_edge = Edge()
 
-
-					new_edge.draw_edge(selected_nodes[0],selected_nodes[1])
-					self.edges.append(new_edge)
-
-
-					self.remove_widget(self.nodes_layout)
-					self.add_widget(self.nodes_layout)
-					
+					window = FloatLayout()
+					window.add_widget(Label(text = "Weight: "))
+					self.input = TextInput(multiline = False,size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.4})
+					window.add_widget(self.input)
+					window.add_widget(Button(text = "Submit",size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.2},on_press = self.create_edge))
+					self.popup = Popup(title = "Enter value",content = window)
+					self.popup.open()
 					break
+
+
 					
+	def create_edge(self,value):
+		self.new_edge.weight = int(self.input.text)
+		self.G.add_edge(self.selected_nodes[0].label,self.selected_nodes[1].label,weight = self.new_edge.weight)
+		self.activate_vertex_addition(None)
+		self.activate_edge_addition(None)
+		
+		
+		self.add_widget(self.new_edge)
+		self.new_edge.nodes += [self.selected_nodes[0],self.selected_nodes[1]]
+
+
+		self.new_edge.draw_edge(self.selected_nodes[0],self.selected_nodes[1])
+		self.edges.append(self.new_edge)
+
+
+		self.remove_widget(self.nodes_layout)
+		self.add_widget(self.nodes_layout)
+		self.popup.dismiss()	
+		self.activate_vertex_addition(None)
+		self.activate_edge_addition(None)		
 				
 
 
 			
-	def clear_canvas(self, obj):
-		for node in self.nodes:
-			self.nodes_layout.remove_widget(node)
-		self.nodes_layout.canvas.clear()
-		self.nodes = []
-		self.G.clear()
-		self.canvas.clear()
-		self.canvas.add(Color(255,255,255))
-		self.canvas.add(Rectangle(size = self.size))
-		self.remove_widget(self.nodes_layout)
-		self.add_widget(self.nodes_layout)
+
 	def activate_vertex_addition(self,value):
 		for node in self.nodes:
 			node.selected = False
@@ -163,13 +170,25 @@ class GraphEditor(FloatLayout):
 	def activate_edge_addition(self,value):
 		self.add_edge = True
 		self.add_vertex = False
+	def clear_canvas(self, obj):
+		for node in self.nodes:
+			self.nodes_layout.remove_widget(node)
+		self.nodes_layout.canvas.clear()
+		self.nodes = []
+		self.G.clear()
+		self.canvas.clear()
+		self.canvas.add(Color(255,255,255))
+		self.canvas.add(Rectangle(size = self.size))
+		self.remove_widget(self.nodes_layout)
+		self.add_widget(self.nodes_layout)
 
+# Node Layout that contains all node widgets
 class NodesLayout(Widget):
 	def __init__(self,**kwargs):
 		super(NodesLayout,self).__init__(**kwargs)	
 		
 			
-
+# MAIN
 class MainApp(App):
 	def build(self):
 		# Graph Editor
@@ -177,9 +196,9 @@ class MainApp(App):
 
 		# Dropdown button
 		self.dropdown = DropDown()
-		self.dropdown.add_widget(Button(text = "DFS",size_hint_y=None, height=20,on_release = self.dfs))
-		self.dropdown.add_widget(Button(text = "BFS",size_hint_y=None, height=20,on_release = self.bfs))
-		self.dropdown.add_widget(Button(text = "Dijkstra's algorithm (shortest Path)",size_hint_y=None, height=20,on_release = self.shortest_path))
+		self.dropdown.add_widget(Button(text = "DFS",size_hint_y=None, height=20,on_release = self.window_traversal))
+		self.dropdown.add_widget(Button(text = "BFS",size_hint_y=None, height=20,on_release = self.window_traversal))
+		self.dropdown.add_widget(Button(text = "Dijkstra's algorithm (shortest Path)",size_hint_y=None, height=20,on_release = self.window_traversal))
 		
 		Layout = BoxLayout(orientation = 'vertical')
 
@@ -190,7 +209,7 @@ class MainApp(App):
 		mainbutton = Button(text='Graph Algo')
 		mainbutton.bind(on_release=self.dropdown.open)
 		top_bar.add_widget(mainbutton)
-		top_bar.add_widget(Button(text = "del",on_press=self.editor.clear_canvas))
+		top_bar.add_widget(Button(text = "Delete",on_press=self.editor.clear_canvas))
 
 		# Status bar
 		status_bar = BoxLayout(orientation = 'horizontal',size_hint = (1,.05))
@@ -212,16 +231,39 @@ class MainApp(App):
 			self.editor.activate_edge_addition(value)
 			self.status.text = "Add edge"
 
-	def dfs(self,value):
+
+	def window_traversal(self,value):
+		if value.text == "DFS":
+			press = self.dfs
+		elif value.text == "BFS":
+			press = self.bfs
+		elif value.text == "Dijkstra's algorithm (shortest Path)":
+			window = FloatLayout()
+			window.add_widget(Label(text = "Enter source: ",size_hint = (.2,None),height = 30,pos_hint = {'x':.20,'y':.4}))
+			self.input_source = TextInput(multiline = False,size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.4})
+			window.add_widget(Label(text = "Enter target: ",size_hint = (.2,None),height = 30,pos_hint = {'x':.20,'y':.3}))
+			self.input_target = TextInput(multiline = False,size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.3})
+			window.add_widget(Button(text = "submit",size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.2},on_press = self.shortest_path))
+			window.add_widget(self.input_source)
+			window.add_widget(self.input_target)
+			self.popup = Popup(title = "Test",content = window)
+			self.popup.open()
+			self.dropdown.dismiss()
+			return
 		self.dropdown.dismiss()
-		start = time.time()
-		source = input("Source: ")
-		end = time.time()
-		duration = int(end - start)
-		node_order = list(nx.dfs_edges(self.editor.G,source = source))
+		window = FloatLayout()
+		window.add_widget(Label(text = "Enter source: "))
+		self.input = TextInput(multiline = False,size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.4})
+		window.add_widget(self.input)
+		window.add_widget(Button(text = "submit",size_hint = (.2,None),height = 30,pos_hint = {'x':.38,'y':.2},on_press = press))
+		self.popup = Popup(title = "Test",content = window)
+		self.popup.open()
+
+	def dfs(self,value):
+		node_order = list(nx.dfs_edges(self.editor.G,source = self.input.text))
 		self.editor.activate_vertex_addition(None)
 		self.editor.activate_edge_addition(None)
-		for count,edge in enumerate2(node_order,duration,0.5):
+		for count,edge in enumerate2(node_order,0,0.5):
 			node_a = self.return_node(edge[0])
 			node_b = self.return_node(edge[1])
 			edge = self.return_edge(edge[0],edge[1])
@@ -231,18 +273,14 @@ class MainApp(App):
 			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count+.5)
 			Clock.schedule_once(partial(edge.draw_edge,node_a,node_b),count+1)
 			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
-		
+		self.editor.add_edge = False
+		self.popup.dismiss()
 			
 	def bfs(self,value):
-		self.dropdown.dismiss()
-		start = time.time()
-		source = input("Source: ")
-		end = time.time()
-		duration = int(end - start)
-		node_order = list(nx.bfs_edges(self.editor.G,source = source))
+		node_order = list(nx.bfs_edges(self.editor.G,source = self.input.text))
 		self.editor.activate_vertex_addition(None)
 		self.editor.activate_edge_addition(None)
-		for count,edge in enumerate2(node_order,duration,.5): # edge = (Node_1, Node_2)
+		for count,edge in enumerate2(node_order,0,0.5):
 			node_a = self.return_node(edge[0])
 			node_b = self.return_node(edge[1])
 			edge = self.return_edge(edge[0],edge[1])
@@ -252,19 +290,21 @@ class MainApp(App):
 			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count+.5)
 			Clock.schedule_once(partial(edge.draw_edge,node_a,node_b),count+1)
 			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
+		self.editor.add_edge = False
+		self.popup.dismiss()
 
 	def shortest_path(self,value):
+		
 		self.dropdown.dismiss()
-		source = input("Source: ")
-		target = input("Target: ")
-		node_order = list(nx.shortest_path(self.editor.G,source = source,target = target,weight = 'weight',method='dijkstra'))
+		node_order = list(nx.shortest_path(self.editor.G,source = self.input_source.text,target = self.input_target.text,weight = 'weight',method='dijkstra'))
 		self.editor.activate_vertex_addition(None)
 		self.editor.activate_edge_addition(None)
 		for count,edge in enumerate2(node_order,0,.5): # edge = (Node_1, Node_2)
 			node_a = self.return_node(edge[0])
 			node_a.selected = True
-
 			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count)
+		self.editor.add_edge = False	
+		self.popup.dismiss()
 
 
 		

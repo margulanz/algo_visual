@@ -120,29 +120,18 @@ class MainApp(App):
 
 		# Should add my own implementations
 		node_order = list(nx.dfs_edges(self.editor.G,source = self.input.text))
+		self.traversal(node_order)
 
-
-		self.editor.activate_vertex_addition(None)
-		self.editor.activate_edge_addition(None)
-		for count,edge in enumerate2(node_order,0,0.5):
-			node_a = self.return_node(edge[0])
-			node_b = self.return_node(edge[1])
-			edge = self.return_edge(edge[0],edge[1])
-			node_a.selected = True
-			node_b.selected = True
-			edge.selected = True
-			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count+.5)
-			Clock.schedule_once(partial(edge.draw_edge,node_a,node_b),count+1)
-			Clock.schedule_once(partial(node_b.draw_node,node_b.pos),count+1)
-		self.editor.add_edge = False
-		self.popup.dismiss()
+		
 			
 	def bfs(self,value):
 
 		# Should add my own implementations
 		node_order = list(nx.bfs_edges(self.editor.G,source = self.input.text))
+		self.traversal(node_order)
 
-
+		
+	def traversal(self,node_order):
 		self.editor.activate_vertex_addition(None)
 		self.editor.activate_edge_addition(None)
 		for count,edge in enumerate2(node_order,0,0.5):
@@ -158,13 +147,7 @@ class MainApp(App):
 		self.editor.add_edge = False
 		self.popup.dismiss()
 
-	def shortest_path(self,value):
-		
-		self.dropdown.dismiss()
-		# Should add my own implementations
-		node_order = list(nx.shortest_path(self.editor.G,source = self.input_source.text,target = self.input_target.text,weight = 'weight',method='dijkstra'))
-
-
+	def path(self,node_order):
 		self.editor.activate_vertex_addition(None)
 		self.editor.activate_edge_addition(None)
 		for count,edge in enumerate2(node_order,0,.5): # edge = (Node_1, Node_2)
@@ -173,6 +156,15 @@ class MainApp(App):
 			Clock.schedule_once(partial(node_a.draw_node,node_a.pos),count)
 		self.editor.add_edge = False	
 		self.popup.dismiss()
+	def shortest_path(self,value):
+		
+		self.dropdown.dismiss()
+		# Should add my own implementations
+		node_order = list(nx.shortest_path(self.editor.G,source = self.input_source.text,target = self.input_target.text,weight = 'weight',method='dijkstra')) # returns list
+		self.path(node_order)
+
+
+		
 
 
 		

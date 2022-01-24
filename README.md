@@ -8,3 +8,4 @@ Application allows users to draw undirected weighted graphs and see each step of
 
 ## Example
 ### DFS
+![Gif](https://github.com/margulanz/algo_visual/blob/main/screenshots/dfs.gif)

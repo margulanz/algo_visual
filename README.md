@@ -1,2 +1,2 @@
-Graph Algorithm Visualizer
+# Graph Algorithm Visualizer
 

@@ -61,8 +61,8 @@ class MainApp(App):
 
 		# Top bar
 		top_bar = BoxLayout(orientation = 'horizontal',size_hint = (1,.1))
-		top_bar.add_widget(Button(id = "vertex",text = "Add vertex",height = 10,on_press = self.button_pressed))
-		top_bar.add_widget(Button(id = "edge",text = "Add Edge",height = 10,on_press = self.button_pressed))
+		top_bar.add_widget(Button(text = "Add vertex",height = 10,on_press = self.button_pressed))
+		top_bar.add_widget(Button(text = "Add Edge",height = 10,on_press = self.button_pressed))
 		mainbutton = Button(text='Graph Algo')
 		mainbutton.bind(on_release=self.dropdown.open)
 		top_bar.add_widget(mainbutton)
@@ -81,10 +81,10 @@ class MainApp(App):
 		return Layout
 
 	def button_pressed(self,value):
-		if value.id == "vertex":
+		if value.text == "Add vertex":
 			self.editor.activate_vertex_addition(value)
 			self.status.text = "Add vertex"
-		elif value.id == "edge":
+		elif value.text== "Add Edge":
 			self.editor.activate_edge_addition(value)
 			self.status.text = "Add edge"
 
